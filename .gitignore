@@ -47,7 +47,10 @@ GCaMPSlice_2022_08_15_KBR <- read.table("", header=TRUE, sep = ",")
 GCaMPSlice_2022_08_16_KBR <- read.table("", header=TRUE, sep = ",")
 
 #Drug2
-
+GCaMPSlice_2022_08_11_NMDA <- read.table("", header=TRUE, sep = ",")
+GCaMPSlice_2022_08_12_NMDA <- read.table("", header=TRUE, sep = ",")
+GCaMPSlice_2022_08_15_NMDA <- read.table("", header=TRUE, sep = ",")
+GCaMPSlice_2022_08_16_NMDA <- read.table("", header=TRUE, sep = ",")
 
 
 #update Spot names (the same)
