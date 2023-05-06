@@ -1,49 +1,658 @@
-# History files
-.Rhistory
-.Rapp.history
+library("lme4")
+library("lmerTest")
+library("lattice")
+library("plyr")
+library("dplyr")
+library("ggplot2")
+library("emmeans") #NOTE: There may or may not be issues with installing this package to use lsmeans (used glht instead)
+library("Rmisc")
+#library("MASS")
+library("multcomp")
+library("reshape2")
+library("tidyr")
+#library("data.table")
+library("Hmisc")
+library("stringr")
+########################
 
-# Session Data files
-.RData
-.RDataTmp
+# theme for plots
+max.theme <- theme_classic() + 
+  theme(
+    text=element_text(size=12),
+    axis.text=element_text(size=12),
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5),
+    axis.title=element_text(size=14, face="bold"),
+    axis.title.y=element_text(vjust=1),
+    legend.text=element_text(size=12),
+    legend.title=element_text(size=14, face="bold"),
+    axis.line.x = element_line(colour = 'black', size=1, linetype='solid'),
+    axis.line.y = element_line(colour = 'black', size=1, linetype='solid')) 
 
-# User-specific files
-.Ruserdata
 
-# Example code in package build process
-*-Ex.R
+###########
+# NOTES
+# COLOUR BLIND FRIENDLY PALETTE FOR PLOTS
+# The palette with black:
 
-# Output files from R CMD build
-/*.tar.gz
+cbbPalette <- c("#D55E00", "#56B4E9", "#009E73","#F0E442", "#0072B2", "#E69F00", "#CC79A7")
 
-# Output files from R CMD check
-/*.Rcheck/
+########################
+# load files output for the hand ROI selected 2D FLIKA
 
-# RStudio files
-.Rproj.user/
 
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
+#Drug1
+GCaMPSlice_2022_08_11_KBR <- read.table("", header=TRUE, sep = ",")
+GCaMPSlice_2022_08_12_KBR <- read.table("", header=TRUE, sep = ",")
+GCaMPSlice_2022_08_15_KBR <- read.table("", header=TRUE, sep = ",")
+GCaMPSlice_2022_08_16_KBR <- read.table("", header=TRUE, sep = ",")
 
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
-.httr-oauth
+#Drug2
 
-# knitr and R markdown default cache directories
-*_cache/
-/cache/
 
-# Temporary files created by R markdown
-*.utf8.md
-*.knit.md
 
-# R Environment Variables
-.Renviron
+#update Spot names (the same)
 
-# pkgdown site
-docs/
+GCaMPSlice_2022_08_11_KBR$Spot<-"2022_08_11"
+GCaMPSlice_2022_08_11_KBR$drug<-"KBR"
 
-# translation temp files
-po/*~
+GCaMPSlice_2022_08_12_KBR$Spot<-"2022_08_12"
+GCaMPSlice_2022_08_12_KBR$drug<-"KBR"
 
-# RStudio Connect folder
-rsconnect/
+GCaMPSlice_2022_08_15_KBR$Spot<-"2022_08_15"
+GCaMPSlice_2022_08_15_KBR$drug<-"KBR"
+
+GCaMPSlice_2022_08_16_KBR$Spot<-"2022_08_16"
+GCaMPSlice_2022_08_16_KBR$drug<-"KBR"
+
+
+
+GCaMPSlice_2022_07_11_NMDADser$Spot<-"2022_07_11"
+GCaMPSlice_2022_07_11_NMDADser$drug<-"NMDADser"
+
+GCaMPSlice_2022_07_18_NMDADser$Spot<-"2022_07_18"
+GCaMPSlice_2022_07_18_NMDADser$drug<-"NMDADser"
+
+GCaMPSlice_2022_07_19_NMDADser$Spot<-"2022_07_19"
+GCaMPSlice_2022_07_19_NMDADser$drug<-"NMDADser"
+
+GCaMPSlice_C4_NMDADser$Spot<-"C4"
+GCaMPSlice_C4_NMDADser$drug<-"NMDADser"
+
+GCaMPSlice_C5_NMDADser$Spot<-"C5"
+GCaMPSlice_C5_NMDADser$drug<-"NMDADser"
+
+GCaMPSlice_C6_NMDADser$Spot<-"C6"
+GCaMPSlice_C6_NMDADser$drug<-"NMDADser"
+
+GCaMPSlice_C7_NMDADser$Spot<-"C7"
+GCaMPSlice_C7_NMDADser$drug<-"NMDADser"
+
+GCaMPSlice_C8_NMDADser$Spot<-"C8"
+GCaMPSlice_C8_NMDADser$drug<-"NMDADser"
+
+
+
+#combine data together for each treatment
+
+KBR<-rbind(GCaMPSlice_2022_08_11_KBR,GCaMPSlice_2022_08_12_KBR,GCaMPSlice_2022_08_16_KBR,GCaMPSlice_2022_08_15_KBR)
+
+NMDADser<-rbind(GCaMPSlice_2022_07_11_NMDADser,GCaMPSlice_2022_07_18_NMDADser,GCaMPSlice_2022_07_19_NMDADser,GCaMPSlice_C4_NMDADser,GCaMPSlice_C5_NMDADser,GCaMPSlice_C6_NMDADser,GCaMPSlice_C7_NMDADser,GCaMPSlice_C8_NMDADser)
+
+
+KBR$Drug="KBR"
+NMDADser$Drug="NMDADser"
+
+
+# combine baseline and KBR data together into one dataframe 
+AllData<-rbind(NMDADser,KBR)
+AllData$Drug<-as.factor(AllData$Drug)
+#AllData$genotype<-as.factor(AllData$genotype)
+
+#make a unqiue ROI name 
+AllData$ROI_Spot <-paste(AllData$Spot, AllData$roiName, sep= "_")
+
+AllData$Duration<-AllData$halfWidth*2
+
+
+# add in a new variable "genotype" depending on soma or process
+
+###############################
+#histograms
+ggplot(AllData, aes(x=Duration, fill=Drug))+ geom_histogram(binwidth=1, position="dodge") +
+  ggtitle("Distribution of ROI duration")
+
+ggplot(AllData, aes(x=halfWidth, fill=Drug))+ geom_histogram(binwidth=1, position="dodge") +
+  ggtitle("Distribution of ROI duration")
+
+ggplot(AllData, aes(x=amplitude, fill=Drug)) + geom_histogram(binwidth=0.2, position="dodge") +
+  ggtitle("Distribution of ROI amplitudes") 
+
+ggplot(AllData, aes(x=peakAUC, fill=Drug)) + geom_histogram(binwidth=1000, position="dodge") +
+  ggtitle("Distribution of peak AUC") 
+
+##########################
+
+# parameters to consider:  frequency (peaks/min), amplitude, and trace AUC, duration
+
+# start first with frequency and amplitude
+
+# pool data for each ROI- calculate the mean peak amplitude, total number of calcium signals, etc. 
+ROI.means<- ddply(AllData, c("Spot","Drug","ROI_Spot"), 
+                  summarise, AUC_mean = mean(peakAUC, na.rm=TRUE), dur_mean = mean(halfWidth,na.rm=TRUE), 
+                  amp_mean = mean(amplitude,na.rm=TRUE), nEvents = sum(numPeaks))
+
+
+
+ROI.means$dur_mean[ROI.means$AUC_mean=="NaN"]=0
+ROI.means$amp_mean[ROI.means$AUC_mean=="NaN"]=0
+ROI.means$nEvents[ROI.means$AUC_mean=="NaN"]=0
+ROI.means$AUC_mean[ROI.means$AUC_mean=="NaN"]=0
+
+# calculate number of signals/min from number of events
+#ROI.means$freq=0
+#ROI.means$freq[ROI.means$Drug=="baseline"]<- (ROI.means$nEvents/3) #3 is num of minutes
+#ROI.means$freq[ROI.means$Drug=="BayK"]<-(ROI.means$nEvents/15) #15 is num of mins 
+
+###### NOTE: The above code was commented out because R was incorrectly doing calculations (nEvents/3 or nEvents/15) and this is because the data-set
+##### contained both Baseline & Drug, so the code below splits the data-sets, does the calculations & then combines them again into Roi.means, the original var
+
+KBRTest<- subset(ROI.means, Drug=="KBR") #
+KBRTest$freq<-KBRTest$nEvents/15
+
+NMDADserTest<- subset(ROI.means, Drug=="NMDADser") #
+NMDADserTest$freq<-NMDADserTest$nEvents/15
+
+ROI.means<- rbind(NMDADserTest, KBRTest)
+
+#####
+
+# consider 2 different groups from the drug trace:
+# baseline peaks are between 0 and 200 seconds
+# drug Peaks happening between 400 and 600 seconds----> when drug is present
+
+AllData.Baseline<-subset(AllData, AllData$peakTime>0 & AllData$peakTime<200 & AllData$Drug!="baseline")
+AllData.Drugs<-subset(AllData, AllData$peakTime>=400 & AllData$peakTime<=600 & AllData$Drug!="baseline") 
+#########? 
+
+##Assign new condition, I call it window  (meaning the window of time that the drug is applied or not)
+AllData.Baseline$Window<-"Baseline"
+AllData.Drugs$Window<-"Drug"
+
+AllData.Baseline$Drug_Window<-interaction(AllData.Baseline$Drug, AllData.Baseline$Window)
+AllData.Drugs$Drug_Window<-interaction(AllData.Drugs$Drug, AllData.Drugs$Window)
+
+
+##Calculate the average information for the baseline period from the first part of the movie
+ 
+ROI.means.Baseline<- ddply(AllData.Baseline, c("Spot","Drug","ROI_Spot", "Drug_Window", "Window"),
+                  summarise, AUC_mean = mean(peakAUC, na.rm=TRUE), dur_mean = mean(halfWidth,na.rm=TRUE), 
+                  amp_mean = mean(amplitude,na.rm=TRUE), nEvents = sum(numPeaks))
+
+ROI.means.Drugs<- ddply(AllData.Drugs, c("Spot","Drug","ROI_Spot", "Drug_Window", "Window"),
+                           summarise, AUC_mean = mean(peakAUC, na.rm=TRUE), dur_mean = mean(halfWidth,na.rm=TRUE), 
+                           amp_mean = mean(amplitude,na.rm=TRUE), nEvents = sum(numPeaks))
+
+
+
+##calculate the frequency (peaks/min)
+ROI.means.Baseline$freq<-(ROI.means.Baseline$nEvents/200)*60
+ROI.means.Drugs$freq<-(ROI.means.Drugs$nEvents/200)*60
+
+##Bind two dataframes
+ROI.means.window<-rbind(ROI.means.Baseline,ROI.means.Drugs)
+ROI.means.window$Drug_Window<-as.factor(ROI.means.window$Drug_Window)
+
+
+#######
+# plots
+
+################
+#frequency
+# baseline is from the baseline movie, drug includes the whole 15 min movie
+df1A <- summarySE(ROI.means, measurevar="freq", groupvars=c("Drug"))
+#df1B <- summarySE(ROI.means, measurevar="freq", groupvars=c("Drug", "genotype"))
+
+# baseline is from the first part 15 min movie, drug response is only a part (200s) of the movie
+df1C <- summarySE(ROI.means.window, measurevar="freq", groupvars=c("Drug_Window"))
+#df1D <- summarySE(ROI.means.window, measurevar="freq", groupvars=c("Drug_Window", "genotype"))
+
+#frequency plot
+ggplot() +
+  geom_bar(data=df1A, aes(x=Drug, y=freq, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.means, aes(y=freq, x=Drug, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                             dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df1A, aes(x=Drug, ymin=freq-se, ymax=freq+se, colour=Drug), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("Frequency (signals/min)- all ROIs")+
+  scale_colour_manual(values=c("green", "blue"), guide="none")+
+  max.theme
+
+#frequency plot genotype
+#ggplot() +
+  #geom_bar(data=df1B, aes(x=genotype, y=freq, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  #geom_jitter(data=ROI.means, aes(y=freq, x=genotype, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+   #                                                                                             dodge.width = 0.9), size=4)+
+  #geom_errorbar(data=df1B, aes(x=genotype, ymin=freq-se, ymax=freq+se, colour=Drug),size=3,width=0.2, position=position_dodge(0.9)) +
+ # ggtitle("freq")+
+ # scale_colour_manual(values=c("green", "blue"),guide="none")+
+ # max.theme
+
+###
+#frequency plot
+ggplot() +
+  geom_bar(data=df1C, aes(x=Drug_Window, y=freq, colour=Drug_Window), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.means.window, aes(y=freq, x=Drug_Window, colour=Drug_Window),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                             dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df1C, aes(x=Drug_Window, ymin=freq-se, ymax=freq+se, colour=Drug_Window), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("Frequency (signals/min)- shorter window")+
+  scale_colour_manual(values=c("green", "blue","pink", "orange"),guide="none")+
+  max.theme
+
+#frequency plot genotype
+#ggplot() +
+ # geom_bar(data=df1D, aes(x=genotype, y=freq, colour=Drug_Window), fill="white", stat="identity",position=position_dodge()) +
+ # geom_jitter(data=ROI.means.window, aes(y=freq, x=genotype, colour=Drug_Window),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+  #                                                                                              dodge.width = 0.9), size=4)+
+#  geom_errorbar(data=df1D, aes(x=genotype, ymin=freq-se, ymax=freq+se, colour=Drug_Window),size=3,width=0.2, position=position_dodge(0.9)) +
+#  ggtitle("freq- shorter window")+
+ # scale_colour_manual(values=c("green", "blue"),guide="none")+
+ # max.theme
+
+
+#####
+# FREQUENCY STATS
+
+#Testing for normality in the residuals
+m = aov(freq ~ Drug_Window, data=ROI.means.window) # fit model
+shapiro.test(residuals(m)) # test residuals
+qqnorm(residuals(m)); qqline(residuals(m)) # plot residuals
+
+# log transform the data if shaprio P value is significant
+
+ROI.means.window$logfreq = log(ROI.means.window$freq) # log transform
+View(ROI.means.window) # verify
+
+
+ROI_Drug= interaction(ROI.means.window$Drug_Window, ROI.means.window$Drug)
+
+#frequency linear mixed model
+freq.null = lmer(freq ~ (1|Spot), ROI.means.window,REML=FALSE)
+freq.model1 = lmer(freq ~ Drug_Window + (1|Spot), ROI.means.window,REML=FALSE)
+freq.model2 = lmer(freq ~ ROI_Drug + (1|Spot), ROI.means.window,REML=FALSE)
+
+freq.anova <- anova(freq.null, freq.model1, freq.model2)
+print(freq.anova)
+
+# look at residuals
+plot(freq.model1)
+
+# calculate pairwise P values
+freq.drug <- glht (freq.model1, linfct = mcp(Drug_Window = "Tukey"))
+summary(freq.drug)
+
+freq.drug_ROI <- glht (freq.model2, linfct = mcp(ROI_Drug = "Tukey"))
+summary(freq.drug_ROI)
+
+
+
+
+##########
+# Duration
+
+# baseline is from the baseline movie, drug includes the whole 15 min movie
+df2A <- summarySE(ROI.means, measurevar="dur_mean", groupvars=c("Drug"))
+#df2B <- summarySE(ROI.means, measurevar="dur_mean", groupvars=c("Drug", "genotype"))
+
+# baseline is from the first part 15 min movie, drug response is only a part (200s) of the movie
+df2C <- summarySE(ROI.means.window, measurevar="dur_mean", groupvars=c("Drug_Window"))
+#df2D <- summarySE(ROI.means.window, measurevar="dur_mean", groupvars=c("Drug_Window", "genotype"))
+
+#Duration plot
+ggplot() +
+  geom_bar(data=df2A, aes(x=Drug, y=dur_mean, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.means, aes(y=dur_mean, x=Drug, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                             dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df2A, aes(x=Drug, ymin=dur_mean-se, ymax=dur_mean+se, colour=Drug), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("Duration - all ROIs")+
+  scale_colour_manual(values=c("green", "blue"),guide="none")+
+  max.theme
+
+#Duration plot genotype
+#ggplot() +
+  #geom_bar(data=df2B, aes(x=genotype, y=dur_mean, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  #geom_jitter(data=ROI.means, aes(y=dur_mean, x=genotype, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+  #                                                                                              dodge.width = 0.9), size=4)+
+  #geom_errorbar(data=df2B, aes(x=genotype, ymin=dur_mean-se, ymax=dur_mean+se, colour=Drug),size=3,width=0.2, position=position_dodge(0.9)) +
+  #ggtitle("Duration - genotype")+
+  #scale_colour_manual(values=c("green", "blue"),guide="none")+
+  #max.theme
+
+###
+#Duration plot
+ggplot() +
+  geom_bar(data=df2C, aes(x=Drug_Window, y=dur_mean, colour=Drug_Window), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.means.window, aes(y=dur_mean, x=Drug_Window, colour=Drug_Window),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                                                  dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df2C, aes(x=Drug_Window, ymin=dur_mean-se, ymax=dur_mean+se, colour=Drug_Window), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("Duration - Shorter Window")+
+  scale_colour_manual(values=c("green", "blue", "pink", "orange"),guide="none")+
+  max.theme
+
+#Duration plot genotype
+#ggplot() +
+ # geom_bar(data=df2D, aes(x=genotype, y=dur_mean, colour=Drug_Window), fill="white", stat="identity",position=position_dodge()) +
+  #geom_jitter(data=ROI.means.window, aes(y=dur_mean, x=genotype, colour=Drug_Window),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+ #                                                                                                             dodge.width = 0.9), size=4)+
+ # geom_errorbar(data=df2D, aes(x=genotype, ymin=dur_mean-se, ymax=dur_mean+se, colour=Drug_Window),size=3,width=0.2, position=position_dodge(0.9)) +
+  #ggtitle("Duration - Shorter Window")+
+ # scale_colour_manual(values=c("green", "blue"),guide="none")+
+ # max.theme
+
+
+
+#####
+#DURATION STATS
+#Testing for normality in the residuals
+m = aov(dur_mean ~ Drug_Window, data=ROI.means.window) # fit model
+shapiro.test(residuals(m)) # test residuals
+qqnorm(residuals(m)); qqline(residuals(m)) # plot residuals
+
+# log transform the data if shaprio P value is significant
+
+ROI.means.window$logdur_mean = log(ROI.means.window$dur_mean) # log transform
+View(ROI.means.window) # verify
+
+
+ROI_Drug= interaction(ROI.means.window$Drug_Window, ROI.means.window$Drug)
+
+#frequency linear mixed model
+dur_mean.null = lmer(dur_mean ~ (1|Spot), ROI.means.window,REML=FALSE)
+dur_mean.model1 = lmer(dur_mean~ Drug_Window + (1|Spot), ROI.means.window,REML=FALSE)
+dur_mean.model2 = lmer(dur_mean~ ROI_Drug + (1|Spot), ROI.means.window,REML=FALSE)
+
+dur_mean.anova <- anova(dur_mean.null, dur_mean.model1, dur_mean.model2)
+print(dur_mean.anova)
+
+# look at residuals
+plot(dur_mean.model1)
+
+# calculate pairwise P values
+dur_mean.drug <- glht (dur_mean.model1, linfct = mcp(Drug_Window = "Tukey"))
+summary(dur_mean.drug)
+
+dur_mean.drug_ROI <- glht (dur_mean.model2, linfct = mcp(ROI_Drug = "Tukey"))
+summary(dur_mean.drug_ROI)
+
+
+
+# Amplitude
+# baseline is from the baseline movie, drug includes the whole 15 min movie
+df3A <- summarySE(ROI.means, measurevar="amp_mean", groupvars=c("Drug"))
+#df3B <- summarySE(ROI.means, measurevar="amp_mean", groupvars=c("Drug", "genotype"))
+
+# baseline is from the first part 15 min movie, drug response is only a part (200s) of the movie
+df3C <- summarySE(ROI.means.window, measurevar="amp_mean", groupvars=c("Drug_Window"))
+#df3D <- summarySE(ROI.means.window, measurevar="amp_mean", groupvars=c("Drug_Window", "genotype"))
+
+#Amplitude plot
+ggplot() +
+  geom_bar(data=df3A, aes(x=Drug, y=amp_mean, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.means, aes(y=amp_mean, x=Drug, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                                 dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df3A, aes(x=Drug, ymin=amp_mean-se, ymax=amp_mean+se, colour=Drug), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("Amplitude - all ROIs")+
+  scale_colour_manual(values=c("green", "blue"),guide="none")+
+  max.theme
+
+#Amplitude plot genotype
+#ggplot() +
+ # geom_bar(data=df3B, aes(x=genotype, y=amp_mean, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  #geom_jitter(data=ROI.means, aes(y=amp_mean, x=genotype, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+  #                                                                                                  dodge.width = 0.9), size=4)+
+ # geom_errorbar(data=df3B, aes(x=genotype, ymin=amp_mean-se, ymax=amp_mean+se, colour=Drug),size=3,width=0.2, position=position_dodge(0.9)) +
+ # ggtitle("Amplitude - genotype")+
+ # scale_colour_manual(values=c("green", "blue"),guide=FALSE)+
+#  max.theme
+
+###
+#Amplitude plot
+ggplot() +
+  geom_bar(data=df3C, aes(x=Drug_Window, y=amp_mean, colour=Drug_Window), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.means.window, aes(y=amp_mean, x=Drug_Window, colour=Drug_Window),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                                                      dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df3C, aes(x=Drug_Window, ymin=amp_mean-se, ymax=amp_mean+se, colour=Drug_Window), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("Amplitude - Shorter Window")+
+  scale_colour_manual(values=c("green", "blue", "pink", "orange"),guide="none")+
+  max.theme
+
+#Amplitude plot genotype
+#ggplot() +
+# geom_bar(data=df3D, aes(x=genotype, y=amp_mean, colour=Drug_Window), fill="white", stat="identity",position=position_dodge()) +
+ # geom_jitter(data=ROI.means.window, aes(y=amp_mean, x=genotype, colour=Drug_Window),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+ #                                                                                                                 dodge.width = 0.9), size=4)+
+ # geom_errorbar(data=df3D, aes(x=genotype, ymin=amp_mean-se, ymax=amp_mean+se, colour=Drug_Window),size=3,width=0.2, position=position_dodge(0.9)) +
+ # ggtitle("Amplitude - Shorter Window")+
+ # scale_colour_manual(values=c("green", "blue"),guide=FALSE)+
+ # max.theme
+
+
+## AMPLITUDE STATS
+#Testing for normality in the residuals
+m = aov(amp_mean ~ Drug_Window, data=ROI.means.window) # fit model
+shapiro.test(residuals(m)) # test residuals
+qqnorm(residuals(m)); qqline(residuals(m)) # plot residuals
+
+# log transform the data if shaprio P value is significant
+
+ROI.means.window$logamp_mean = log(ROI.means.window$amp_mean) # log transform
+View(ROI.means.window) # verify
+
+ROI.means.window$logamp_mean[ROI.means.window$logamp_mean=="-Inf"]=0  #THIS WAS ADDED TO REMOVE any possible -Inf values from hand-selected ROIS that may not have nEvents
+
+ROI_Drug= interaction(ROI.means.window$Drug_Window, ROI.means.window$Drug)
+
+#frequency linear mixed model
+amp_mean.null = lmer(logamp_mean ~ (1|Spot), ROI.means.window,REML=FALSE)
+amp_mean.model1 = lmer(logamp_mean~ Drug_Window + (1|Spot), ROI.means.window,REML=FALSE)
+amp_mean.model2 = lmer(logamp_mean~ ROI_Drug + (1|Spot), ROI.means.window,REML=FALSE)
+
+amp_mean.anova <- anova(amp_mean.null, amp_mean.model1, amp_mean.model2)
+print(amp_mean.anova)
+
+# look at residuals
+plot(amp_mean.model1)
+
+# calculate pairwise P values
+amp_mean.drug <- glht (amp_mean.model1, linfct = mcp(Drug_Window = "Tukey"))
+summary(amp_mean.drug)
+
+amp_mean.drug_ROI <- glht (amp_mean.model2, linfct = mcp(ROI_Drug = "Tukey"))
+summary(amp_mean.drug_ROI)
+
+
+
+#########
+
+#amplitude
+
+# baseline is from the baseline movie, drug includes the whole 15 min movie
+df3A <- summarySE(ROI.means, measurevar="amp_mean", groupvars=c("Drug"))
+#df3B <- summarySE(ROI.means, measurevar="amp_mean", groupvars=c("Drug", "genotype"))
+
+# baseline is from the first part 15 min movie, drug response is only a part (200s) of the movie
+df3C <- summarySE(ROI.means.window, measurevar="amp_mean", groupvars=c("Drug_Window"))
+#df3D <- summarySE(ROI.means.window, measurevar="amp_mean", groupvars=c("Drug_Window", "genotype"))
+
+#amplitude plot
+ggplot() +
+  geom_bar(data=df3A, aes(x=Drug, y=amp_mean, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.means, aes(y=amp_mean, x=Drug, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                                 dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df3A, aes(x=Drug, ymin=amp_mean-se, ymax=amp_mean+se, colour=Drug), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("amplitude - all ROIs")+
+  scale_colour_manual(values=c("green", "blue"),guide="none")+
+  max.theme
+
+#amplitude plot genotype
+#ggplot() +
+  #geom_bar(data=df3B, aes(x=genotype, y=amp_mean, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  #geom_jitter(data=ROI.means, aes(y=amp_mean, x=genotype, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+ #                                                                                                    dodge.width = 0.9), size=4)+
+ # geom_errorbar(data=df3B, aes(x=genotype, ymin=amp_mean-se, ymax=amp_mean+se, colour=Drug),size=3,width=0.2, position=position_dodge(0.9)) +
+  #ggtitle("amplitude - genotype")+
+ # scale_colour_manual(values=c("green", "blue"),guide="none")+
+ # max.theme
+
+###
+#amplitude plot
+ggplot() +
+  geom_bar(data=df3C, aes(x=Drug_Window, y=amp_mean, colour=Drug_Window), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.means.window, aes(y=amp_mean, x=Drug_Window, colour=Drug_Window),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                                                      dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df3C, aes(x=Drug_Window, ymin=amp_mean-se, ymax=amp_mean+se, colour=Drug_Window), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("amplitude - Shorter Window")+
+  scale_colour_manual(values=c("green", "blue","pink", "orange"),guide="none")+
+  max.theme
+
+#amplitude plot genotype
+#ggplot() +
+ # geom_bar(data=df3D, aes(x=genotype, y=amp_mean, colour=Drug_Window), fill="white", stat="identity",position=position_dodge()) +
+ # geom_jitter(data=ROI.means.window, aes(y=amp_mean, x=genotype, colour=Drug_Window),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+  #                                                                                                                 dodge.width = 0.9), size=4)+
+ # geom_errorbar(data=df3D, aes(x=genotype, ymin=amp_mean-se, ymax=amp_mean+se, colour=Drug_Window),size=3,width=0.2, position=position_dodge(0.9)) +
+ # ggtitle("amplitude - Shorter Window")+
+ # scale_colour_manual(values=c("green", "blue"),guide="none")+
+ # max.theme
+
+
+
+
+# Area Under the Curve  from the traces
+#calculate with separate matlab code
+
+#control_baseline
+NMDADser_Baseline_AUC <- read.table("", header=TRUE, sep = ",")
+
+#control_KBR
+NMDADser_Drug_AUC <- read.table("", header=TRUE, sep = ",")
+
+#KD_baseline
+KBR_Baseline_AUC <- read.table("", header=TRUE, sep = ",")
+
+#KD_KBR
+KBR_Drug_AUC <- read.table("", header=TRUE, sep = ",")
+
+# add drug name
+NMDADser_Baseline_AUC$Drug="baseline.NMDA"
+NMDADser_Drug_AUC$Drug="NMDADser"
+KBR_Baseline_AUC$Drug="baseline.KBR"
+KBR_Drug_AUC$Drug="KBR"
+
+### TracesAUC
+
+TracesAUC<-rbind(NMDADser_Baseline_AUC,NMDADser_Drug_AUC,KBR_Baseline_AUC,KBR_Drug_AUC)
+
+
+# histogram
+ggplot(TracesAUC, aes(x=AUC, fill=Drug)) + geom_histogram(binwidth=20, position="dodge") +
+  ggtitle("Distribution of AUC") 
+
+
+#average across each spot
+
+ROI.AUC<- ddply(TracesAUC, c("Spot","Drug"), summarise, AUC_mean = mean(AUC, na.rm=TRUE))
+
+#######
+# plots
+
+################
+# AUC
+# baseline is from the first 100 sec, drug is 300-400 sec
+
+#df4A <- summarySE(TracesAUC, measurevar="AUC", groupvars=c("Drug"))
+
+# averaged across spot
+#df4C <- summarySE(ROI.AUC, measurevar="AUC_mean", groupvars=c("Drug"))
+
+
+# 
+df4A <- summarySE(TracesAUC, measurevar="AUC", groupvars=c("Drug"))
+#df4B <- summarySE(TracesAUC, measurevar="AUC", groupvars=c("Drug", "genotype"))
+
+# 
+df4C <- summarySE(ROI.AUC, measurevar="AUC_mean", groupvars=c("Drug"))
+#df4D <- summarySE(ROI.AUC, measurevar="AUC_mean", groupvars=c("Drug", "genotype"))
+
+
+#AUC plot each ROI
+ggplot() +
+  geom_bar(data=df4A, aes(x=Drug, y=AUC, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=TracesAUC, aes(y=AUC, x=Drug, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                             dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df4A, aes(x=Drug, ymin=AUC-se, ymax=AUC+se, colour=Drug), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("Trace AUC- each ROI")+
+  scale_colour_manual(values=c("green", "blue", "pink", "yellow"),guide="none")+
+  max.theme
+
+
+# graph of AUC for genotype and Drug
+
+ggplot() +
+  geom_bar(data=df4B, aes(x=genotype, y=AUC, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=TracesAUC, aes(y=AUC, x=genotype, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                                     dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df4B, aes(x=genotype, ymin=AUC-se, ymax=AUC+se, colour=Drug),size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("AUC - genotype")+
+  scale_colour_manual(values=c("green", "blue", "pink"))+
+  max.theme
+#
+ggplot() +
+  geom_bar(data=df4D, aes(x=genotype, y=AUC_mean, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.AUC, aes(y=AUC_mean, x=genotype, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                                                   dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df4D, aes(x=genotype, ymin=AUC_mean-se, ymax=AUC_mean+se, colour=Drug),size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("AUC - Shorter Window")+
+  scale_colour_manual(values=c("green", "blue"))+
+  max.theme
+
+###
+#AUC plot averaged per spot
+ggplot() +
+  geom_bar(data=df4C, aes(x=Drug, y=AUC_mean, colour=Drug), fill="white", stat="identity",position=position_dodge()) +
+  geom_jitter(data=ROI.AUC, aes(y=AUC_mean, x=Drug, colour=Drug),position=position_jitterdodge(jitter.width = 0.15, jitter.height = 0,
+                                                                                                           dodge.width = 0.9), size=4)+
+  geom_errorbar(data=df4C, aes(x=Drug, ymin=AUC_mean-se, ymax=AUC_mean+se, colour=Drug), size=3,width=0.2, position=position_dodge(0.9)) +
+  ggtitle("AUC- mean across each spot")+
+  scale_colour_manual(values=c("green", "blue", "pink", "yellow"),guide="none")+
+  max.theme
+
+
+
+##
+# STATS
+
+#Testing for normality in the residuals
+m = aov(AUC ~ Drug, data=TracesAUC) # fit model
+shapiro.test(residuals(m)) # test residuals
+qqnorm(residuals(m)); qqline(residuals(m)) # plot residuals
+
+# log transform the data if shaprio P value is significant
+
+TracesAUC$logAUC = log(TracesAUC$AUC) # log transform
+View(TracesAUC) # verify
+
+
+#AUC linear mixed model
+AUC.null = lmer(AUC ~ (1|Spot), TracesAUC,REML=FALSE)
+AUC.model1 = lmer(AUC~ Drug+ (1|Spot), TracesAUC,REML=FALSE)
+
+AUC.anova <- anova(AUC.null, AUC.model1)
+print(AUC.anova)
+
+# look at residuals
+plot(AUC.model1)
+
+# calculate pairwise P values
+AUC.drug <- glht (AUC.model1, linfct = mcp(Drug= "Tukey"))
+summary(AUC.drug)
+
+
